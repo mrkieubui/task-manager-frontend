@@ -11,18 +11,20 @@ pipeline {
         stage('Build & Package Electron App') {
             steps {
                 script {
-                    // Chạy toàn bộ tiến trình install + build trong cùng container builder
-                    docker.image('electronuserland/builder:wine').inside {
-                        // 1. Cài đặt dependency trực tiếp trong môi trường glibc/wine
+                    docker.image('electronuserland/builder:wine').inside('-e npm_config_cache=/tmp/.npm') {
+                        // 1. Dọn dẹp node_modules rác từ các lượt build trước
+                        sh 'rm -rf node_modules'
+                        
+                        // 2. Cài đặt sạch phụ thuộc
                         sh 'npm ci'
                         
-                        // 2. Chạy test nếu có
+                        // 3. Chạy test (nếu khai báo trong package.json)
                         sh 'npm run --if-present test'
                         
-                        // 3. Build Web Assets (Vite)
+                        // 4. Build web bundle (Vite/TSC)
                         sh 'npm run build'
                         
-                        // 4. Đóng gói Electron app (dùng script electron-builder hoặc script build mặc định)
+                        // 5. Đóng gói ứng dụng Electron cho Linux & Windows
                         sh 'npx electron-builder --linux --windows'
                     }
                 }
@@ -31,7 +33,6 @@ pipeline {
 
         stage('Publish Artifacts') {
             steps {
-                // Đưa các file bộ cài đầu ra (.deb, .AppImage, .exe) lên Jenkins Artifacts
                 archiveArtifacts artifacts: 'dist/*.deb, dist/*.AppImage, dist/*.exe, release/*.deb, release/*.exe', allowEmptyArchive: true
             }
         }
