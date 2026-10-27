@@ -8,26 +8,22 @@ pipeline {
             }
         }
 
-        stage('Install Dependencies & Test') {
-            steps {
-                script {
-                    // Đổi sang node:22-alpine để tương thích với Electron 45 & Vite 8
-                    docker.image('node:22-alpine').inside {
-                        sh 'npm ci'
-                        // Bỏ qua step test nếu package.json chưa viết test suite
-                        // Hoặc dùng lệnh kiểm tra an toàn:
-                        sh 'npm run --if-present test'
-                    }
-                }
-            }
-        }
-
         stage('Build & Package Electron App') {
             steps {
                 script {
-                    // Sử dụng image builder hỗ trợ đóng gói ứng dụng Electron cho Linux/Windows
+                    // Chạy toàn bộ tiến trình install + build trong cùng container builder
                     docker.image('electronuserland/builder:wine').inside {
-                        sh 'npm run build || npm run make'
+                        // 1. Cài đặt dependency trực tiếp trong môi trường glibc/wine
+                        sh 'npm ci'
+                        
+                        // 2. Chạy test nếu có
+                        sh 'npm run --if-present test'
+                        
+                        // 3. Build Web Assets (Vite)
+                        sh 'npm run build'
+                        
+                        // 4. Đóng gói Electron app (dùng script electron-builder hoặc script build mặc định)
+                        sh 'npx electron-builder --linux --windows'
                     }
                 }
             }
@@ -35,8 +31,8 @@ pipeline {
 
         stage('Publish Artifacts') {
             steps {
-                // Lưu trữ file bộ cài (.deb, .AppImage, .exe) trên Jenkins Server
-                archiveArtifacts artifacts: 'dist/*.deb, dist/*.AppImage, release/*.deb', allowEmptyArchive: true
+                // Đưa các file bộ cài đầu ra (.deb, .AppImage, .exe) lên Jenkins Artifacts
+                archiveArtifacts artifacts: 'dist/*.deb, dist/*.AppImage, dist/*.exe, release/*.deb, release/*.exe', allowEmptyArchive: true
             }
         }
     }
