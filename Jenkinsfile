@@ -29,7 +29,7 @@ pipeline {
     post {
         always {
             // Lưu trữ file cài đặt (.deb) thu được vào Jenkins Artifacts
-            archiveArtifacts artifacts: 'release/*.deb, release/*.AppImage, release/*.exe, dist/*.deb', allowEmptyArchive: true
+            archiveArtifacts artifacts: 'release/*.deb', allowEmptyArchive: true
         }
     }
 }
