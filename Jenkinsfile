@@ -23,10 +23,10 @@ pipeline {
                         sh 'npm run --if-present test'
                         
                         // 4. Build Vite frontend bundle
-                        sh 'npm run build'
+                        sh 'npm run dev'
                         
                         // 5. Đóng gói app Electron cho Linux & Windows
-                        sh 'npx electron-builder --linux --windows'
+                        sh 'npx electron-builder --linux'
                     }
                 }
             }
@@ -35,7 +35,7 @@ pipeline {
         stage('Publish Artifacts') {
             steps {
                 // Đưa các file đóng gói đầu ra lên Jenkins Artifacts
-                archiveArtifacts artifacts: 'release/*.deb, release/*.AppImage, release/*.exe, release/*.zip, dist/*.deb, dist/*.exe', allowEmptyArchive: true
+                archiveArtifacts artifacts: 'release/*.deb', allowEmptyArchive: true
             }
         }
     }
