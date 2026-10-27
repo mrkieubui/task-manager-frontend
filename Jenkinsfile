@@ -11,20 +11,21 @@ pipeline {
         stage('Build & Package Electron App') {
             steps {
                 script {
-                    docker.image('electronuserland/builder:wine').inside('-e npm_config_cache=/tmp/.npm') {
-                        // 1. Dọn dẹp node_modules rác từ các lượt build trước
+                    // Cấp đường dẫn cache chuẩn trong /tmp cho npm và electron-builder
+                    docker.image('electronuserland/builder:wine').inside('-e npm_config_cache=/tmp/.npm -e XDG_CACHE_HOME=/tmp/.cache -e ELECTRON_BUILDER_CACHE=/tmp/.cache/electron-builder') {
+                        // 1. Dọn dẹp node_modules cũ
                         sh 'rm -rf node_modules'
                         
-                        // 2. Cài đặt sạch phụ thuộc
+                        // 2. Cài đặt phụ thuộc
                         sh 'npm ci'
                         
-                        // 3. Chạy test (nếu khai báo trong package.json)
+                        // 3. Chạy test nếu có
                         sh 'npm run --if-present test'
                         
-                        // 4. Build web bundle (Vite/TSC)
+                        // 4. Build Vite frontend bundle
                         sh 'npm run build'
                         
-                        // 5. Đóng gói ứng dụng Electron cho Linux & Windows
+                        // 5. Đóng gói app Electron cho Linux & Windows
                         sh 'npx electron-builder --linux --windows'
                     }
                 }
@@ -33,7 +34,8 @@ pipeline {
 
         stage('Publish Artifacts') {
             steps {
-                archiveArtifacts artifacts: 'dist/*.deb, dist/*.AppImage, dist/*.exe, release/*.deb, release/*.exe', allowEmptyArchive: true
+                // Đưa các file đóng gói đầu ra lên Jenkins Artifacts
+                archiveArtifacts artifacts: 'release/*.deb, release/*.AppImage, release/*.exe, release/*.zip, dist/*.deb, dist/*.exe', allowEmptyArchive: true
             }
         }
     }
