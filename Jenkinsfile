@@ -1,11 +1,6 @@
 pipeline {
     agent any
 
-    tools {
-        // Tên tool trùng khớp với tên đã tạo ở Bước 2
-        nodejs 'NodeJS-22'
-    }
-
     stages {
         stage('Checkout Source Code') {
             steps {
@@ -13,21 +8,15 @@ pipeline {
             }
         }
 
-        stage('Install Dependencies') {
+        stage('Build & Package') {
             steps {
-                sh 'npm ci'
-            }
-        }
-
-        stage('Build Frontend Assets') {
-            steps {
-                sh 'npm run build'
-            }
-        }
-
-        stage('Package Electron App') {
-            steps {
-                sh 'npm run dist'
+                script {
+                    docker.image('node:22-alpine').inside {
+                        sh 'npm ci'
+                        sh 'npm run build'
+                        sh 'npm run dist'
+                    }
+                }
             }
         }
     }
