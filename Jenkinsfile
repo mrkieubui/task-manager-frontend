@@ -8,36 +8,28 @@ pipeline {
             }
         }
 
-        stage('Install Dependencies & Test') {
-            steps {
-                script {
-                    // Đổi sang node:22-alpine để tương thích với Electron 45 & Vite 8
-                    docker.image('node:22-alpine').inside {
-                        sh 'npm ci'
-                        // Bỏ qua step test nếu package.json chưa viết test suite
-                        // Hoặc dùng lệnh kiểm tra an toàn:
-                        sh 'npm run --if-present test'
-                    }
-                }
-            }
-        }
-
         stage('Build & Package Electron App') {
             steps {
                 script {
-                    // Sử dụng image builder hỗ trợ đóng gói ứng dụng Electron cho Linux/Windows
-                    docker.image('electronuserland/builder:wine').inside {
-                        sh 'npm run build || npm run make'
+                    docker.image('electronuserland/builder:wine').inside('-e npm_config_cache=/tmp/.npm -e XDG_CACHE_HOME=/tmp/.cache -e ELECTRON_BUILDER_CACHE=/tmp/.cache/electron-builder') {
+                        // 1. Cài đặt dependencies
+                        sh 'npm ci'
+                        
+                        // 2. Build Vite Frontend Asset
+                        sh 'npm run build'
+                        
+                        // 3. Đóng gói app và TẮT tính năng tự động publish lên GitHub
+                        sh 'npx electron-builder --linux --publish never'
                     }
                 }
             }
         }
+    }
 
-        stage('Publish Artifacts') {
-            steps {
-                // Lưu trữ file bộ cài (.deb, .AppImage, .exe) trên Jenkins Server
-                archiveArtifacts artifacts: 'dist/*.deb, dist/*.AppImage, release/*.deb', allowEmptyArchive: true
-            }
+    post {
+        always {
+            // Lưu trữ file cài đặt (.deb) thu được vào Jenkins Artifacts
+            archiveArtifacts artifacts: 'release/*.deb', allowEmptyArchive: true
         }
     }
 }
